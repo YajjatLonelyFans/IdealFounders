@@ -1,16 +1,12 @@
 import express from 'express';
-import {getAllUsers,getUserById,createUser,updateUser,deleteUser} from '../controllers/userController.js';
+import { getMe, onboardUser, deleteUser } from '../controllers/userController.js';
+import { protectRoute } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
-router.route('/')
-    .get(getAllUsers)
-    .post(createUser);
-
-
-router.route('/:id')
-    .get(getUserById)
-    .put(updateUser)
-    .delete(deleteUser);
+router.get('/me', protectRoute, getMe);
+router.post('/onboard', protectRoute, upload.single('avatar'), onboardUser);
+router.delete('/me', protectRoute, deleteUser);
 
 export default router;

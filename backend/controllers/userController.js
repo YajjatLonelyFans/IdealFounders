@@ -1,138 +1,135 @@
-import { User } from '../models/User.js';
+import User from '../models/User.js';
+import { deleteOldImage } from '../functionality/imageCleaner.js';
 
 
-export const getAllUsers = async (req, res) => {
+export const getMe = async (req, res) => {
     try {
-        const users = await User.find({});
-        res.status(200).json({
-            success: true,
-            count: users.length,
-            data: users
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server Error',
-            error: error.message
-        });
-    }
-};
+        const clerkId = req.auth.userId;
 
-
-export const getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
+        const user = await User.findOne({ clerkId });
 
         if (!user) {
             return res.status(404).json({
-                success: false,
-                message: 'User not found'
+                error: 'User not found',
+                message: 'Please complete onboarding first',
             });
         }
 
-        res.status(200).json({
-            success: true,
-            data: user
-        });
+        res.json(user);
     } catch (error) {
+        console.error('Error fetching user profile:', error);
         res.status(500).json({
-            success: false,
-            message: 'Server Error',
-            error: error.message
+            error: 'Internal server error',
+            message: 'Failed to fetch user profile',
         });
     }
 };
 
 
-export const createUser = async (req, res) => {
+export const onboardUser = async (req, res) => {
     try {
-        const { name, email, role, bio } = req.body;
+        const clerkId = req.auth.userId;
+        const { fullName, bio, role, skills, lookingFor } = req.body;
 
-
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: 'User with this email already exists'
-            });
-        }
-
-        const user = await User.create({
-            name,
-            email,
-            role,
-            bio
-        });
-
-        res.status(201).json({
-            success: true,
-            message: 'User created successfully',
-            data: user
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server Error',
-            error: error.message
-        });
-    }
-};
-
-
-export const updateUser = async (req, res) => {
-    try {
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            {
-                new: true,
-                runValidators: true
+        // Parse skills if it's a string
+        let parsedSkills = skills;
+        if (typeof skills === 'string') {
+            try {
+                parsedSkills = JSON.parse(skills);
+            } catch (e) {
+                parsedSkills = skills.split(',').map((s) => s.trim());
             }
+        }
+
+
+        let parsedLookingFor = lookingFor;
+        if (typeof lookingFor === 'string') {
+            try {
+                parsedLookingFor = JSON.parse(lookingFor);
+            } catch (e) {
+                parsedLookingFor = { role: '', industry: '' };
+            }
+        }
+
+
+        const existingUser = await User.findOne({ clerkId });
+
+
+        let avatarData = existingUser?.avatar || { url: '', publicId: '' };
+
+
+        if (req.file) {
+
+            if (existingUser?.avatar?.publicId) {
+                await deleteOldImage(existingUser.avatar.publicId);
+            }
+
+
+            avatarData = {
+                url: req.file.path,
+                publicId: req.file.filename,
+            };
+        }
+
+
+        const updateData = {
+            clerkId,
+            email: req.auth.sessionClaims?.email || existingUser?.email || '',
+            fullName: fullName || existingUser?.fullName || '',
+            bio: bio || existingUser?.bio || '',
+            role: role || existingUser?.role,
+            skills: parsedSkills || existingUser?.skills || [],
+            lookingFor: parsedLookingFor || existingUser?.lookingFor || { role: '', industry: '' },
+            avatar: avatarData,
+        };
+
+
+        const user = await User.findOneAndUpdate(
+            { clerkId },
+            updateData,
+            { new: true, upsert: true, runValidators: true }
         );
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'User updated successfully',
-            data: user
+        res.json({
+            message: 'Profile updated successfully',
+            user,
         });
     } catch (error) {
+        console.error('Error onboarding user:', error);
         res.status(500).json({
-            success: false,
-            message: 'Server Error',
-            error: error.message
+            error: 'Internal server error',
+            message: 'Failed to update profile',
+            details: error.message,
         });
     }
 };
-
 
 export const deleteUser = async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
+        const clerkId = req.auth.userId;
+        const user = await User.findOne({ clerkId });
 
         if (!user) {
             return res.status(404).json({
-                success: false,
-                message: 'User not found'
+                error: 'User not found',
+                message: 'No profile exists to delete',
             });
         }
 
-        res.status(200).json({
-            success: true,
-            message: 'User deleted successfully',
-            data: {}
+        if (user.avatar?.publicId) {
+            await deleteOldImage(user.avatar.publicId);
+        }
+
+        await User.deleteOne({ clerkId });
+
+        res.json({
+            message: 'Profile deleted successfully',
         });
     } catch (error) {
+        console.error('Error deleting user:', error);
         res.status(500).json({
-            success: false,
-            message: 'Server Error',
-            error: error.message
+            error: 'Internal server error',
+            message: 'Failed to delete profile',
         });
     }
 };
