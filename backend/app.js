@@ -2,16 +2,16 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import config from './config.js';
 import { initClerkMiddleware } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
 import userRoutes from './routes/userRoutes.js';
 import matchRoutes from './routes/matchRoutes.js';
-
-// Load environment variables
-dotenv.config();
+import chatRoutes from './routes/chatRoutes.js';
+import Conversation from './models/Conversation.js';
+import Message from './models/Message.js';
 
 // Initialize Express app
 const app = express();
@@ -20,7 +20,7 @@ const httpServer = createServer(app);
 // Initialize Socket.io with CORS
 const io = new Server(httpServer, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: [config.frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'],
         methods: ['GET', 'POST'],
         credentials: true,
     },
@@ -34,7 +34,7 @@ const io = new Server(httpServer, {
 app.use(helmet());
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: [config.frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'],
         credentials: true,
     })
 );
@@ -52,10 +52,10 @@ app.use(initClerkMiddleware);
 
 const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ MongoDB connected successfully');
+        await mongoose.connect(config.mongodbUri);
+        console.log('MongoDB connected successfully');
     } catch (error) {
-        console.error('❌ MongoDB connection error:', error);
+        console.error('MongoDB connection error:', error);
         process.exit(1);
     }
 };
@@ -79,6 +79,7 @@ app.get('/health', (req, res) => {
 // API routes with rate limiting
 app.use('/api/users', rateLimiter, userRoutes);
 app.use('/api/matches', rateLimiter, matchRoutes);
+app.use('/api/chat', rateLimiter, chatRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -111,16 +112,61 @@ io.on('connection', (socket) => {
     });
 
     // Send message to room
-    socket.on('send-message', (data) => {
+    socket.on('send-message', async (data) => {
         const { roomId, message, senderId, senderName, timestamp } = data;
 
-        // Broadcast message to all users in the room
-        io.to(roomId).emit('receive-message', {
+        // Broadcast message to all users in the room EXCEPT the sender
+        // (sender already has optimistic UI update)
+        socket.broadcast.to(roomId).emit('receive-message', {
             message,
             senderId,
             senderName,
             timestamp: timestamp || new Date().toISOString(),
         });
+
+        // Persist message to database
+        try {
+            // 1. Find or create conversation
+            // roomId is unique (e.g. "user1--user2")
+            let conversation = await Conversation.findOne({ roomId });
+
+            if (!conversation) {
+                const participants = roomId.split('--');
+
+                if (participants.length === 2) {
+                    conversation = await Conversation.create({
+                        roomId,
+                        participants,
+                        lastMessage: message,
+                        lastMessageAt: new Date(),
+                    });
+                }
+            } else {
+                // Update existing conversation
+                conversation.lastMessage = message;
+                conversation.lastMessageAt = new Date();
+
+                // Mark as unread for the recipient (not the sender)
+                const recipientId = conversation.participants.find(id => id !== senderId);
+                if (recipientId) {
+                    conversation.hasUnreadMessages.set(recipientId, true);
+                }
+
+                await conversation.save();
+            }
+
+            // 2. Create message
+            if (conversation) {
+                await Message.create({
+                    conversationId: conversation._id,
+                    senderId,
+                    senderName,
+                    content: message,
+                });
+            }
+        } catch (error) {
+            console.error('Error saving message to DB:', error);
+        }
     });
 
     // Handle disconnection
@@ -133,12 +179,11 @@ io.on('connection', (socket) => {
 // SERVER START
 // ======================
 
-const PORT = process.env.PORT || 5000;
 
-httpServer.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📡 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔌 Socket.io ready for real-time connections`);
+httpServer.listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
+    console.log(`Health check: http://localhost:${config.port}/health`);
+    console.log(`Socket.io ready for real-time connections`);
 });
 
 export default app;

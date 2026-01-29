@@ -1,17 +1,18 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import config from '../config.js';
 
-// Initialize Upstash Redis
 const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    url: config.upstash.redisUrl,
+    token: config.upstash.redisToken,
 });
 
 // Create rate limiter with sliding window
-// Limit: 10 requests per 10 seconds
+// Development: 100 requests per 10 seconds (generous for testing)
+// Production: Consider reducing to 20-30 requests per 10 seconds
 const ratelimit = new Ratelimit({
     redis: redis,
-    limiter: Ratelimit.slidingWindow(10, '10 s'),
+    limiter: Ratelimit.slidingWindow(100, '10 s'),
     analytics: true,
 });
 

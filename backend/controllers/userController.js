@@ -1,11 +1,11 @@
 import User from '../models/User.js';
 import { deleteOldImage } from '../functionality/imageCleaner.js';
+import { clerkClient } from '@clerk/express';
 
 
 export const getMe = async (req, res) => {
     try {
         const clerkId = req.auth.userId;
-
         const user = await User.findOne({ clerkId });
 
         if (!user) {
@@ -26,10 +26,50 @@ export const getMe = async (req, res) => {
 };
 
 
+export const getUserByClerkId = async (req, res) => {
+    try {
+        const { clerkId } = req.params;
+        console.log(`Backend Looking up user with clerkId: [${clerkId}]`);
+
+        const user = await User.findOne({ clerkId });
+
+        if (user) {
+            console.log(`✅ Found user: ${user.fullName} (${user._id})`);
+        } else {
+            console.log(`❌ User not found for clerkId: [${clerkId}]`);
+        }
+
+        if (!user) {
+            return res.status(404).json({
+                error: 'User not found',
+                message: 'User profile does not exist',
+            });
+        }
+
+        res.json({ user });
+    } catch (error) {
+        console.error('Error fetching user by Clerk ID:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: 'Failed to fetch user profile',
+        });
+    }
+};
+
+
 export const onboardUser = async (req, res) => {
     try {
         const clerkId = req.auth.userId;
         const { fullName, bio, role, skills, lookingFor } = req.body;
+
+        // Fetch user email from Clerk
+        let userEmail = '';
+        try {
+            const clerkUser = await clerkClient.users.getUser(clerkId);
+            userEmail = clerkUser.emailAddresses?.[0]?.emailAddress || '';
+        } catch (clerkError) {
+            console.error('Error fetching Clerk user:', clerkError);
+        }
 
         // Parse skills if it's a string
         let parsedSkills = skills;
@@ -74,7 +114,7 @@ export const onboardUser = async (req, res) => {
 
         const updateData = {
             clerkId,
-            email: req.auth.sessionClaims?.email || existingUser?.email || '',
+            email: userEmail || existingUser?.email || '',
             fullName: fullName || existingUser?.fullName || '',
             bio: bio || existingUser?.bio || '',
             role: role || existingUser?.role,
@@ -116,11 +156,21 @@ export const deleteUser = async (req, res) => {
             });
         }
 
+        // Delete avatar from Cloudinary
         if (user.avatar?.publicId) {
             await deleteOldImage(user.avatar.publicId);
         }
 
+        // Delete user from MongoDB
         await User.deleteOne({ clerkId });
+
+        // Delete user from Clerk
+        try {
+            await clerkClient.users.deleteUser(clerkId);
+        } catch (clerkError) {
+            console.error('Error deleting Clerk user:', clerkError);
+            // Continue even if Clerk deletion fails
+        }
 
         res.json({
             message: 'Profile deleted successfully',
