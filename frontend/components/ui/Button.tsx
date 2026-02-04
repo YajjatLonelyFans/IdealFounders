@@ -46,7 +46,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 variants={buttonPress}
                 initial="rest"
                 whileTap="tap"
-                {...(props as React.ComponentPropsWithoutRef<'button'>)}
+                // @ts-ignore - Framer Motion and React have conflicting event handler types
+                {...props}
             >
                 {loading && (
                     <svg

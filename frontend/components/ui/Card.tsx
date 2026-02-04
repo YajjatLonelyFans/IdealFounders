@@ -43,7 +43,8 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
                 initial="rest"
                 whileHover={hover ? 'hover' : undefined}
                 variants={hover ? hoverLift : undefined}
-                {...(props as React.ComponentPropsWithoutRef<'div'>)}
+                // @ts-ignore - Framer Motion and React have conflicting event handler types
+                {...props}
             >
                 {children}
             </motion.div>
