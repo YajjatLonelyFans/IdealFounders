@@ -46,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 variants={buttonPress}
                 initial="rest"
                 whileTap="tap"
-                {...(props as any)}
+                {...(props as React.ComponentPropsWithoutRef<'button'>)}
             >
                 {loading && (
                     <svg

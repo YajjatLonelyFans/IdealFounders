@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { hoverLift } from '@/lib/animations';
 
@@ -43,7 +43,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
                 initial="rest"
                 whileHover={hover ? 'hover' : undefined}
                 variants={hover ? hoverLift : undefined}
-                {...(props as any)}
+                {...(props as React.ComponentPropsWithoutRef<'div'>)}
             >
                 {children}
             </motion.div>
