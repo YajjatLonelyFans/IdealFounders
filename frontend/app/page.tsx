@@ -34,7 +34,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               <Image
-                src="/logo.png"
+                src="/logo.jpeg"
                 alt="IdealFounders"
                 width={40}
                 height={40}
