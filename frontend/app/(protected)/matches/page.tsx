@@ -21,7 +21,7 @@ export default function MatchesPage() {
     const router = useRouter();
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [matches, setMatches] = useState<Match[]>([]);
-    const [filter, setFilter] = useState<'opposite' | 'same'>('opposite');
+    const [filter, setFilter] = useState<'opposite' | 'same'>('same');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -97,15 +97,6 @@ export default function MatchesPage() {
             >
                 <div className="inline-flex rounded-lg border border-border p-1 bg-white">
                     <button
-                        onClick={() => setFilter('opposite')}
-                        className={`px-6 py-2 rounded-md font-medium transition-all ${filter === 'opposite'
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'text-gray-700 hover:text-primary'
-                            }`}
-                    >
-                        {currentUser?.role === 'founder' ? 'Find Investors' : 'Find Founders'}
-                    </button>
-                    <button
                         onClick={() => setFilter('same')}
                         className={`px-6 py-2 rounded-md font-medium transition-all ${filter === 'same'
                             ? 'bg-primary text-white shadow-sm'
@@ -113,6 +104,15 @@ export default function MatchesPage() {
                             }`}
                     >
                         Find Co-founders
+                    </button>
+                    <button
+                        onClick={() => setFilter('opposite')}
+                        className={`px-6 py-2 rounded-md font-medium transition-all ${filter === 'opposite'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-gray-700 hover:text-primary'
+                            }`}
+                    >
+                        {currentUser?.role === 'founder' ? 'Find Investors' : 'Find Founders'}
                     </button>
                 </div>
             </motion.div>

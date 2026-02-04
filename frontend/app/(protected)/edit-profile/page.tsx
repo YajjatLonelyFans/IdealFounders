@@ -204,16 +204,6 @@ export default function EditProfilePage() {
                             <div className="flex gap-4">
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, role: 'founder' })}
-                                    className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all ${formData.role === 'founder'
-                                        ? 'border-primary bg-primary-50 text-primary'
-                                        : 'border-border hover:border-primary'
-                                        }`}
-                                >
-                                    Founder
-                                </button>
-                                <button
-                                    type="button"
                                     onClick={() => setFormData({ ...formData, role: 'investor' })}
                                     className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all ${formData.role === 'investor'
                                         ? 'border-primary bg-primary-50 text-primary'
@@ -221,6 +211,16 @@ export default function EditProfilePage() {
                                         }`}
                                 >
                                     Investor
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, role: 'founder' })}
+                                    className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all ${formData.role === 'founder'
+                                        ? 'border-primary bg-primary-50 text-primary'
+                                        : 'border-border hover:border-primary'
+                                        }`}
+                                >
+                                    Founder
                                 </button>
                             </div>
                         </div>

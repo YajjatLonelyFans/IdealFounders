@@ -7,12 +7,10 @@ const redis = new Redis({
     token: config.upstash.redisToken,
 });
 
-// Create rate limiter with sliding window
-// Development: 100 requests per 10 seconds (generous for testing)
-// Production: Consider reducing to 20-30 requests per 10 seconds
+
 const ratelimit = new Ratelimit({
     redis: redis,
-    limiter: Ratelimit.slidingWindow(100, '10 s'),
+    limiter: Ratelimit.slidingWindow(10, '10 s'),
     analytics: true,
 });
 

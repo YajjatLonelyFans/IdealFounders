@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
                 setUser(userData);
 
-                const matchesData = await getMatches('opposite', token);
+                const matchesData = await getMatches('same', token);
                 setMatches(matchesData.matches.slice(0, 3));
             } catch (err: any) {
                 // If user not found (404), redirect to onboarding
@@ -148,7 +148,7 @@ export default function DashboardPage() {
                         <CardHeader>
                             <CardTitle>Find Matches</CardTitle>
                             <CardDescription>
-                                Discover {user.role === 'founder' ? 'investors and co-founders' : 'founders'} who align with your goals
+                                Discover co-founders who align with your goals
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

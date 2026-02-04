@@ -34,13 +34,12 @@ export const getRecommendations = async (req, res) => {
             matchScore: calculateMatchScore(currentUser, candidate),
         }));
 
-        const topMatches = scoredCandidates
-            .sort((a, b) => b.matchScore - a.matchScore)
-            .slice(0, 10);
+        const sortedMatches = scoredCandidates
+            .sort((a, b) => b.matchScore - a.matchScore);
 
         res.json({
-            matches: topMatches,
-            total: topMatches.length,
+            matches: sortedMatches,
+            total: sortedMatches.length,
             filter: filter || 'opposite',
         });
     } catch (error) {

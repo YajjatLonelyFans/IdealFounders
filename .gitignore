@@ -2,3 +2,4 @@ backend/.env
 backend/node_modules/
 backend/steps.md
 backend/.env.example
+backend/scripts/
