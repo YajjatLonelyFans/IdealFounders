@@ -10,10 +10,6 @@ export default function SignUpPage() {
                         card: "shadow-xl"
                     }
                 }}
-                routing="path"
-                path="/sign-up"
-                signInUrl="/sign-in"
-                forceRedirectUrl="/onboarding"
             />
         </div>
     );
