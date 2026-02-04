@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher([
     '/dashboard(.*)',
@@ -9,8 +10,18 @@ const isProtectedRoute = createRouteMatcher([
     '/chat(.*)',
 ]);
 
-export default clerkMiddleware((auth, req) => {
-    if (isProtectedRoute(req)) auth.protect();
+export default clerkMiddleware(async (auth, req) => {
+    if (isProtectedRoute(req)) await auth.protect();
+
+    // Add pathname to headers so layout can access it
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-pathname', req.nextUrl.pathname);
+
+    return NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
 });
 
 export const config = {
