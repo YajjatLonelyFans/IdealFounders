@@ -9,20 +9,22 @@ import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/Card';
 import { LoadingPage } from '@/components/ui/LoadingSpinner';
 import { EmptyState, EmptyIcons } from '@/components/ui/EmptyState';
+import { useCurrentUser } from '@/context/UserContext';
 import { getConversations, markAsRead } from '@/lib/api';
 import { Conversation } from '@/types';
-import { generateRoomId } from '@/lib/utils';
-import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations';
+import { staggerContainer, staggerItem } from '@/lib/animations';
 
 export default function InboxPage() {
-    const { getToken, userId } = useAuth();
+    const { getToken } = useAuth();
     const router = useRouter();
+    const { loading: userLoading, error: userError } = useCurrentUser();
     const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [convsLoading, setConvsLoading] = useState(true);
 
     useEffect(() => {
+        if (userLoading) return;
+
         async function loadConversations() {
-            setLoading(true);
             try {
                 const token = await getToken();
                 if (token) {
@@ -32,32 +34,24 @@ export default function InboxPage() {
             } catch (error) {
                 console.error('Failed to load conversations:', error);
             } finally {
-                setLoading(false);
+                setConvsLoading(false);
             }
         }
 
         loadConversations();
-    }, [getToken]);
+    }, [userLoading, getToken]);
 
     const handleOpenChat = async (roomId: string, hasUnread: boolean) => {
-        // Mark as read immediately if it has unread messages
         if (hasUnread) {
             try {
                 const token = await getToken();
-                if (token) {
-                    await markAsRead(roomId, token);
-                }
-            } catch (error) {
-                console.log('Could not mark as read:', error);
-            }
+                if (token) markAsRead(roomId, token).catch(() => { });
+            } catch (error) { }
         }
-
-        // Navigate to chat
-        const encodedId = btoa(roomId);
-        router.push(`/chat/${encodedId}`);
+        router.push(`/chat/${btoa(roomId)}`);
     };
 
-    if (loading) return <LoadingPage message="Loading your conversations..." />;
+    if (userLoading) return <LoadingPage message="Loading your conversations..." />;
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -69,7 +63,22 @@ export default function InboxPage() {
                 Messages
             </motion.h1>
 
-            {conversations.length === 0 ? (
+            {/* Skeleton while conversations load */}
+            {convsLoading && (
+                <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-xl border border-border bg-white p-4 flex items-center gap-4 animate-pulse">
+                            <div className="w-12 h-12 rounded-full bg-gray-200 flex-shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-4 bg-gray-200 rounded w-32" />
+                                <div className="h-3 bg-gray-200 rounded w-56" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {!convsLoading && conversations.length === 0 && (
                 <EmptyState
                     icon={EmptyIcons.NoMessages}
                     title="No messages yet"
@@ -79,7 +88,9 @@ export default function InboxPage() {
                         onClick: () => router.push('/matches'),
                     }}
                 />
-            ) : (
+            )}
+
+            {!convsLoading && conversations.length > 0 && (
                 <motion.div
                     className="space-y-4"
                     variants={staggerContainer}
@@ -109,9 +120,8 @@ export default function InboxPage() {
                                                 {conv.participant.fullName.charAt(0)}
                                             </div>
                                         )}
-                                        {/* Unread indicator dot */}
                                         {conv.hasUnread && (
-                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
+                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
                                         )}
                                     </div>
 

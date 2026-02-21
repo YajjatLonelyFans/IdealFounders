@@ -9,127 +9,85 @@ import { Button } from '@/components/ui/Button';
 import { LoadingPage } from '@/components/ui/LoadingSpinner';
 import { EmptyState, EmptyIcons } from '@/components/ui/EmptyState';
 import { connectSocket, joinRoom, sendMessage, onReceiveMessage, offReceiveMessage } from '@/lib/socket';
-import { getMessages, getCurrentUser, markAsRead } from '@/lib/api';
+import { getMessages, markAsRead } from '@/lib/api';
+import { useCurrentUser } from '@/context/UserContext';
 import { Message, User } from '@/types';
 import { formatTime } from '@/lib/utils';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function ChatPage() {
     const { getToken } = useAuth();
     const params = useParams();
     const roomId = params.roomId as string;
 
-    const [currentUserId, setCurrentUserId] = useState('');
-    const [currentUserName, setCurrentUserName] = useState('');
+    // User from shared context — no extra getCurrentUser call needed
+    const { user, loading: userLoading } = useCurrentUser();
+
     const [chatPartner, setChatPartner] = useState<User | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    // Store decoded roomId in ref to avoid stale closure in socket callback
     const decodedRoomIdRef = useRef<string>('');
 
     useEffect(() => {
+        // Wait for user context to resolve before proceeding
+        if (userLoading || !user) return;
+        const currentUser = user; // narrowed to non-null for async function
+
         async function initialize() {
             try {
                 const token = await getToken();
                 if (!token) return;
 
-                const user = await getCurrentUser(token);
-                setCurrentUserId(user.clerkId);
-                setCurrentUserName(user.fullName);
-
                 // Decode Base64 room ID
                 let decodedRoomId = roomId;
-                try {
-                    decodedRoomId = atob(roomId);
-                } catch (e) {
-                    // Fallback if not valid base64 (for legacy links)
-                    decodedRoomId = roomId;
-                }
-
-                // Store in ref for socket callback
+                try { decodedRoomId = atob(roomId); } catch (e) { }
                 decodedRoomIdRef.current = decodedRoomId;
 
                 // Extract the other user's ID from the room ID
-                // Try splitting by new separator '--' first, then fallback to replacing current ID
-                let otherUserId = decodedRoomId.split('--').find(id => id !== user.clerkId);
-
-                // Fallback for legacy rooms (using '_') or if split failed
-                if (!otherUserId && decodedRoomId.includes(user.clerkId)) {
-                    // Robust extraction: Remove my ID and any separators from the mixed string
-                    otherUserId = decodedRoomId.replace(user.clerkId, '').replace(/^-+|-+$|^_+|_+$/g, '');
+                let otherUserId = decodedRoomId.split('--').find(id => id !== currentUser.clerkId);
+                if (!otherUserId && decodedRoomId.includes(currentUser.clerkId)) {
+                    otherUserId = decodedRoomId.replace(currentUser.clerkId, '').replace(/^-+|-+$|^_+|_+$/g, '');
                 }
 
+                // Fetch chat partner info and message history in PARALLEL
+                const [partnerResponse, history] = await Promise.all([
+                    otherUserId
+                        ? fetch(`${API_BASE}/api/users/${otherUserId}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                        })
+                        : Promise.resolve(null),
+                    getMessages(decodedRoomId, token).catch(() => [] as unknown as Message[]),
+                ]);
 
-
-                // Fetch the other user's information
-                if (otherUserId) {
-                    try {
-                        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/${otherUserId}`;
-
-                        const response = await fetch(apiUrl, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                            },
-                        });
-
-
-
-                        if (response.ok) {
-                            const partnerData = await response.json();
-                            setChatPartner(partnerData.user);
-                        } else {
-                            const errorData = await response.json().catch(() => ({}));
-
-                            // Set a fallback if user not found (404)
-                            if (response.status === 404) {
-                                setChatPartner({
-                                    _id: otherUserId,
-                                    clerkId: otherUserId,
-                                    fullName: 'Chat Partner',
-                                    role: 'founder',
-                                    email: '',
-                                    bio: '',
-                                    skills: [],
-                                    lookingFor: { role: '', industry: '' },
-                                    avatar: { url: '', publicId: '' },
-                                    createdAt: new Date().toISOString(),
-                                    updatedAt: new Date().toISOString(),
-                                } as User);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Exception fetching chat partner:', error);
-                    }
-                } else {
-
+                // Handle partner data
+                if (partnerResponse?.ok) {
+                    const partnerData = await partnerResponse.json();
+                    setChatPartner(partnerData.user);
+                } else if (partnerResponse?.status === 404 && otherUserId) {
+                    setChatPartner({
+                        _id: otherUserId, clerkId: otherUserId,
+                        fullName: 'Chat Partner', role: 'founder',
+                        email: '', bio: '', skills: [],
+                        lookingFor: { role: '', industry: '' },
+                        avatar: { url: '', publicId: '' },
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                    } as User);
                 }
 
-                // Fetch Message History
-                try {
-                    const history = await getMessages(decodedRoomId, token) as unknown as Message[];
-                    setMessages(history);
-
-                    // Mark conversation as read (if it exists)
-                    try {
-                        await markAsRead(decodedRoomId, token);
-                    } catch (readError) {
-                        // Silently fail - conversation might not exist yet
-                        console.log('Could not mark as read (conversation may not exist yet)');
-                    }
-                } catch (error) {
-                    console.error('Failed to load message history:', error);
-                }
+                // Set messages and silently mark as read
+                setMessages(history as unknown as Message[]);
+                markAsRead(decodedRoomId, token).catch(() => { });
 
                 // Connect to Socket.io
-                const socket = connectSocket();
+                connectSocket();
                 joinRoom(decodedRoomId);
 
-                // Listen for incoming messages
                 onReceiveMessage(async (data) => {
-                    // Only handle messages from other users (sender already has optimistic UI)
-                    if (data.senderId !== user.clerkId) {
+                    if (data.senderId !== currentUser.clerkId) {
                         setMessages((prev) => [...prev, {
                             _id: crypto.randomUUID(),
                             content: data.message,
@@ -141,30 +99,23 @@ export default function ChatPage() {
                         }]);
 
                         // Mark as read since user is viewing the chat
-                        try {
-                            const currentToken = await getToken();
-                            if (currentToken) {
-                                await markAsRead(decodedRoomIdRef.current, currentToken);
-                            }
-                        } catch (error) {
-                            console.log('Could not mark message as read:', error);
+                        const currentToken = await getToken();
+                        if (currentToken) {
+                            markAsRead(decodedRoomIdRef.current, currentToken).catch(() => { });
                         }
                     }
                 });
-
-                setLoading(false);
             } catch (error) {
                 console.error('Failed to initialize chat:', error);
+            } finally {
                 setLoading(false);
             }
         }
 
         initialize();
 
-        return () => {
-            offReceiveMessage();
-        };
-    }, [roomId]); // Only depend on roomId, not getToken
+        return () => { offReceiveMessage(); };
+    }, [roomId, user, userLoading, getToken]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -172,35 +123,27 @@ export default function ChatPage() {
     }, [messages]);
 
     const handleSend = () => {
-        // Assuming `connectSocket()` returns a global socket instance or `sendMessage` uses it internally.
-        // The `!socket` check here would require storing the socket instance in state if it's not global.
-        // For now, we'll use `currentUserId` and `currentUserName` as `user.clerkId` and `user.fullName`.
-        if (!newMessage.trim() || !currentUserId) return;
+        if (!newMessage.trim() || !user) return;
 
-        // Decode room ID again for access (or store it in state, but simpler to decode local var if inside effect - wait, this is outside)
-        // We need the decoded ID here.
         let decodedId = roomId;
         try { decodedId = atob(roomId); } catch (e) { }
 
-        // Optimistic UI update
-        const messagePayload = {
+        const messagePayload: Message = {
             _id: crypto.randomUUID(),
             content: newMessage,
-            senderId: currentUserId || 'unknown',
-            senderName: currentUserName || 'User',
+            senderId: user.clerkId,
+            senderName: user.fullName,
             conversationId: 'temp',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
 
         setMessages((prev) => [...prev, messagePayload]);
-
-        // Send to server
-        sendMessage(decodedId, newMessage, currentUserId, currentUserName || 'User');
+        sendMessage(decodedId, newMessage, user.clerkId, user.fullName);
         setNewMessage('');
     };
 
-    if (loading) return <LoadingPage message="Loading chat..." />;
+    if (userLoading || loading) return <LoadingPage message="Loading chat..." />;
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -208,7 +151,6 @@ export default function ChatPage() {
                 {/* Chat Header */}
                 <div className="border-b border-border p-4">
                     <div className="flex items-center gap-3">
-                        {/* Avatar */}
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 flex-shrink-0">
                             {chatPartner?.avatar?.url ? (
                                 <Image
@@ -226,10 +168,9 @@ export default function ChatPage() {
                                 </div>
                             )}
                         </div>
-                        {/* Name and Role */}
                         <div className="flex-1">
                             <h2 className="text-lg font-semibold text-gray-900">
-                                {chatPartner?.fullName || (!loading ? 'Unknown User' : 'Loading...')}
+                                {chatPartner?.fullName || 'Unknown User'}
                             </h2>
                             {chatPartner?.role && (
                                 <p className="text-sm text-gray-600 capitalize">{chatPartner.role}</p>
@@ -248,7 +189,7 @@ export default function ChatPage() {
                         />
                     ) : (
                         messages.map((msg, index) => {
-                            const isCurrentUser = msg.senderId === currentUserId;
+                            const isCurrentUser = msg.senderId === user?.clerkId;
                             return (
                                 <div
                                     key={index}
@@ -266,10 +207,7 @@ export default function ChatPage() {
                                             </p>
                                         )}
                                         <p className="text-sm">{msg.content || msg.message}</p>
-                                        <p
-                                            className={`text-xs mt-1 ${isCurrentUser ? 'text-primary-100' : 'text-gray-500'
-                                                }`}
-                                        >
+                                        <p className={`text-xs mt-1 ${isCurrentUser ? 'text-primary-100' : 'text-gray-500'}`}>
                                             {formatTime(msg.createdAt || msg.timestamp || '')}
                                         </p>
                                     </div>
@@ -277,7 +215,6 @@ export default function ChatPage() {
                             );
                         })
                     )}
-                    {/* Scroll anchor - auto-scroll to this element when messages change */}
                     <div ref={messagesEndRef} />
                 </div>
 
