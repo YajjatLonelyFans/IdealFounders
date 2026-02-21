@@ -11,55 +11,42 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingPage } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { EmptyState, EmptyIcons } from '@/components/ui/EmptyState';
-import { getMatches, getCurrentUser } from '@/lib/api';
-import { Match, User } from '@/types';
+import { useCurrentUser } from '@/context/UserContext';
+import { getMatches } from '@/lib/api';
+import { Match } from '@/types';
 import { calculateMatchPercentage, generateRoomId } from '@/lib/utils';
-import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations';
+import { staggerContainer, staggerItem } from '@/lib/animations';
 
 export default function MatchesPage() {
     const { getToken } = useAuth();
     const router = useRouter();
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const { user: currentUser, loading: userLoading, error: userError } = useCurrentUser();
     const [matches, setMatches] = useState<Match[]>([]);
     const [filter, setFilter] = useState<'opposite' | 'same'>('same');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [matchesLoading, setMatchesLoading] = useState(true);
+    const [matchesError, setMatchesError] = useState('');
 
     useEffect(() => {
+        if (userLoading || !currentUser) return;
+
         async function loadMatches() {
-            setLoading(true);
-            setError('');
+            setMatchesLoading(true);
+            setMatchesError('');
             try {
                 const token = await getToken();
                 if (!token) throw new Error('Not authenticated');
 
-                const [userData, matchesData] = await Promise.all([
-                    getCurrentUser(token),
-                    getMatches(filter, token),
-                ]);
-
-                // If user doesn't exist (onboarding not completed), redirect to onboarding
-                if (!userData) {
-                    router.push('/onboarding?redirected=true');
-                    return;
-                }
-
-                setCurrentUser(userData);
+                const matchesData = await getMatches(filter, token);
                 setMatches(matchesData.matches);
             } catch (err: any) {
-                // If user not found, redirect to onboarding
-                if (err.message.includes('not found') || err.message.includes('onboarding')) {
-                    router.push('/onboarding?redirected=true');
-                    return;
-                }
-                setError(err.message);
+                setMatchesError(err.message);
             } finally {
-                setLoading(false);
+                setMatchesLoading(false);
             }
         }
 
         loadMatches();
-    }, [filter, getToken, router]);
+    }, [filter, currentUser, userLoading, getToken]);
 
     const handleChat = (matchId: string) => {
         if (!currentUser) return;
@@ -67,7 +54,8 @@ export default function MatchesPage() {
         router.push(`/chat/${roomId}`);
     };
 
-    if (loading) return <LoadingPage message="Finding your matches..." />;
+    if (userLoading) return <LoadingPage message="Finding your matches..." />;
+    if (userError) return <div className="max-w-7xl mx-auto px-4 py-12"><ErrorMessage message={userError} /></div>;
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-12">
@@ -118,15 +106,32 @@ export default function MatchesPage() {
             </motion.div>
 
             {/* Error State */}
-            {error && (
+            {matchesError && (
                 <ErrorMessage
-                    message={error}
+                    message={matchesError}
                     retry={() => window.location.reload()}
                 />
             )}
 
+            {/* Matches Loading Skeleton */}
+            {matchesLoading && (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-xl border border-border bg-white p-6 animate-pulse">
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-24 h-24 rounded-full bg-gray-200" />
+                                <div className="h-4 bg-gray-200 rounded w-24" />
+                                <div className="h-3 bg-gray-200 rounded w-16" />
+                                <div className="h-3 bg-gray-200 rounded w-full mt-2" />
+                                <div className="h-3 bg-gray-200 rounded w-3/4" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Empty State */}
-            {!error && matches.length === 0 && (
+            {!matchesLoading && !matchesError && matches.length === 0 && (
                 <EmptyState
                     icon={EmptyIcons.NoMatches}
                     title="No matches found"
@@ -139,7 +144,7 @@ export default function MatchesPage() {
             )}
 
             {/* Matches Grid */}
-            {!error && matches.length > 0 && (
+            {!matchesLoading && !matchesError && matches.length > 0 && (
                 <motion.div
                     className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
                     variants={staggerContainer}
@@ -147,7 +152,7 @@ export default function MatchesPage() {
                     animate="visible"
                     key={filter}
                 >
-                    {matches.map((match, index) => (
+                    {matches.map((match) => (
                         <motion.div key={match._id} variants={staggerItem}>
                             <Card hover>
                                 <CardContent className="pt-6">

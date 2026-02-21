@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,48 +11,16 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingPage } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Modal } from '@/components/ui/Modal';
-import { getCurrentUser, deleteProfile } from '@/lib/api';
-import { User } from '@/types';
-import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations';
+import { useCurrentUser } from '@/context/UserContext';
+import { deleteProfile } from '@/lib/api';
+import { staggerContainer } from '@/lib/animations';
 
 export default function ProfilePage() {
     const { getToken } = useAuth();
     const router = useRouter();
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const { user, loading, error } = useCurrentUser();
     const [deleting, setDeleting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-    useEffect(() => {
-        async function loadUser() {
-            try {
-                const token = await getToken();
-                if (!token) throw new Error('Not authenticated');
-
-                const userData = await getCurrentUser(token);
-
-                // If user doesn't exist (onboarding not completed), redirect to onboarding
-                if (!userData) {
-                    router.push('/onboarding?redirected=true');
-                    return;
-                }
-
-                setUser(userData);
-            } catch (err: any) {
-                // If user not found (404), redirect to onboarding
-                if (err.message.includes('not found') || err.message.includes('onboarding')) {
-                    router.push('/onboarding?redirected=true');
-                    return;
-                }
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        loadUser();
-    }, [getToken, router]);
 
     const handleDelete = async () => {
         setDeleting(true);
@@ -62,8 +30,7 @@ export default function ProfilePage() {
 
             await deleteProfile(token);
 
-            // Use hard redirect to force full page reload and clear all state
-            // Redirect to sign-in instead of homepage to avoid loop
+            // Hard redirect to clear all state
             window.location.href = '/sign-in';
         } catch (err: any) {
             alert(err.message);

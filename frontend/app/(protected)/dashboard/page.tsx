@@ -2,61 +2,48 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { LoadingPage } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { getCurrentUser, getMatches } from '@/lib/api';
-import { User, Match } from '@/types';
-import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations';
+import { useCurrentUser } from '@/context/UserContext';
+import { getMatches } from '@/lib/api';
+import { Match } from '@/types';
+import { staggerContainer, staggerItem } from '@/lib/animations';
 
 export default function DashboardPage() {
     const { getToken } = useAuth();
     const { user: clerkUser } = useUser();
-    const router = useRouter();
-    const [user, setUser] = useState<User | null>(null);
+    const { user, loading: userLoading, error: userError } = useCurrentUser();
     const [matches, setMatches] = useState<Match[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [matchesLoading, setMatchesLoading] = useState(true);
+    const [matchesError, setMatchesError] = useState('');
 
     useEffect(() => {
-        async function loadData() {
+        // Only fetch matches once user is resolved
+        if (userLoading || !user) return;
+
+        async function loadMatches() {
             try {
                 const token = await getToken();
                 if (!token) throw new Error('Not authenticated');
 
-                const userData = await getCurrentUser(token);
-
-                // If user doesn't exist (onboarding not completed), redirect to onboarding
-                if (!userData) {
-                    router.push('/onboarding?redirected=true');
-                    return;
-                }
-
-                setUser(userData);
-
                 const matchesData = await getMatches('same', token);
                 setMatches(matchesData.matches.slice(0, 3));
             } catch (err: any) {
-                // If user not found (404), redirect to onboarding
-                if (err.message.includes('404') || err.message.includes('not found') || err.message.includes('onboarding')) {
-                    router.push('/onboarding?redirected=true');
-                } else {
-                    setError(err.message);
-                }
+                setMatchesError(err.message);
             } finally {
-                setLoading(false);
+                setMatchesLoading(false);
             }
         }
 
-        loadData();
-    }, [getToken, router]);
+        loadMatches();
+    }, [user, userLoading, getToken]);
 
-    if (loading) return <LoadingPage message="Loading your dashboard..." />;
-    if (error) return <div className="max-w-7xl mx-auto px-4 py-12"><ErrorMessage message={error} /></div>;
+    if (userLoading) return <LoadingPage message="Loading your dashboard..." />;
+    if (userError) return <div className="max-w-7xl mx-auto px-4 py-12"><ErrorMessage message={userError} /></div>;
     if (!user) return null;
 
     return (
@@ -123,7 +110,9 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-gray-600 mb-1">Top Matches</p>
-                                    <p className="text-2xl font-bold text-primary">{matches.length}</p>
+                                    <p className="text-2xl font-bold text-primary">
+                                        {matchesLoading ? '...' : matches.length}
+                                    </p>
                                 </div>
                                 <div className="w-12 h-12 bg-accent-100 rounded-full flex items-center justify-center">
                                     <svg className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -181,7 +170,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Recent Matches Preview */}
-            {matches.length > 0 && (
+            {!matchesLoading && matches.length > 0 && (
                 <motion.div
                     className="mt-8"
                     variants={staggerContainer}
@@ -195,7 +184,7 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                     <div className="grid md:grid-cols-3 gap-6">
-                        {matches.map((match, index) => (
+                        {matches.map((match) => (
                             <motion.div key={match._id} variants={staggerItem}>
                                 <Card hover>
                                     <CardContent className="pt-6">
