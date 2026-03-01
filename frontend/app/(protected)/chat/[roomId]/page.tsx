@@ -69,9 +69,13 @@ export default function ChatPage() {
                 } else if (partnerResponse?.status === 404 && otherUserId) {
                     setChatPartner({
                         _id: otherUserId, clerkId: otherUserId,
-                        fullName: 'Chat Partner', role: 'founder',
-                        email: '', bio: '', skills: [],
-                        lookingFor: { role: '', industry: '' },
+                        fullName: 'Chat Partner',
+                        email: '', bio: '', birthdate: '', gender: 'male',
+                        location: { state: '', city: '', locality: '' },
+                        education: { degree: 'N/A', yearOfPassing: 'N/A' },
+                        expertise: 'technical', expertiseLookingFor: 'technical',
+                        skills: [], skillsLookingFor: [],
+                        startingFrom: 'either', hasCofounder: false, suitability: 'either',
                         avatar: { url: '', publicId: '' },
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString(),
@@ -172,8 +176,8 @@ export default function ChatPage() {
                             <h2 className="text-lg font-semibold text-gray-900">
                                 {chatPartner?.fullName || 'Unknown User'}
                             </h2>
-                            {chatPartner?.role && (
-                                <p className="text-sm text-gray-600 capitalize">{chatPartner.role}</p>
+                            {chatPartner?.expertise && (
+                                <p className="text-sm text-gray-600 capitalize">{chatPartner.expertise}</p>
                             )}
                         </div>
                     </div>

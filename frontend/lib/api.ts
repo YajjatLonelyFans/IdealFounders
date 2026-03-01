@@ -63,24 +63,38 @@ export async function getCurrentUser(token: string): Promise<User> {
 export async function updateProfile(
     data: {
         fullName?: string;
+        birthdate?: string;
+        gender?: string;
+        location?: { state: string; city: string; locality: string };
+        education?: { degree: string; yearOfPassing: string };
+        expertise?: string;
+        expertiseLookingFor?: string;
         bio?: string;
-        role?: string;
         skills?: string[];
-        lookingFor?: { role: string; industry: string };
+        skillsLookingFor?: string[];
+        startingFrom?: string;
+        hasCofounder?: boolean;
+        suitability?: string;
     },
     avatar: File | null,
     token: string
 ): Promise<UserResponse> {
     const formData = new FormData();
 
-    // Append text fields
     if (data.fullName) formData.append('fullName', data.fullName);
+    if (data.birthdate) formData.append('birthdate', data.birthdate);
+    if (data.gender) formData.append('gender', data.gender);
+    if (data.location) formData.append('location', JSON.stringify(data.location));
+    if (data.education) formData.append('education', JSON.stringify(data.education));
+    if (data.expertise) formData.append('expertise', data.expertise);
+    if (data.expertiseLookingFor) formData.append('expertiseLookingFor', data.expertiseLookingFor);
     if (data.bio) formData.append('bio', data.bio);
-    if (data.role) formData.append('role', data.role);
     if (data.skills) formData.append('skills', JSON.stringify(data.skills));
-    if (data.lookingFor) formData.append('lookingFor', JSON.stringify(data.lookingFor));
+    if (data.skillsLookingFor) formData.append('skillsLookingFor', JSON.stringify(data.skillsLookingFor));
+    if (data.startingFrom) formData.append('startingFrom', data.startingFrom);
+    if (data.hasCofounder !== undefined) formData.append('hasCofounder', String(data.hasCofounder));
+    if (data.suitability) formData.append('suitability', data.suitability);
 
-    // Append avatar file
     if (avatar) {
         formData.append('avatar', avatar);
     }
@@ -108,12 +122,9 @@ export async function deleteProfile(token: string): Promise<{ message: string }>
 /**
  * Get match recommendations
  */
-export async function getMatches(
-    filter: 'opposite' | 'same',
-    token: string
-): Promise<MatchesResponse> {
+export async function getMatches(token: string): Promise<MatchesResponse> {
     const response = await fetchWithAuth(
-        `/api/matches/recommendations?filter=${filter}`,
+        '/api/matches/recommendations',
         { method: 'GET' },
         token
     );

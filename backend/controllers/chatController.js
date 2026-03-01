@@ -17,7 +17,7 @@ export const getConversations = async (req, res) => {
             conversations.map(async (conv) => {
                 const otherUserId = conv.participants.find((id) => id !== userId);
                 const otherUser = await User.findOne({ clerkId: otherUserId }).select(
-                    'fullName avatar role'
+                    'fullName avatar'
                 );
 
                 return {
@@ -29,7 +29,6 @@ export const getConversations = async (req, res) => {
                     participant: otherUser || {
                         fullName: 'Unknown User',
                         avatar: { url: '' },
-                        role: '',
                     },
                 };
             })

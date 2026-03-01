@@ -30,7 +30,7 @@ export default function DashboardPage() {
                 const token = await getToken();
                 if (!token) throw new Error('Not authenticated');
 
-                const matchesData = await getMatches('same', token);
+                const matchesData = await getMatches(token);
                 setMatches(matchesData.matches.slice(0, 3));
             } catch (err: any) {
                 setMatchesError(err.message);
@@ -73,8 +73,8 @@ export default function DashboardPage() {
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600 mb-1">Your Role</p>
-                                    <p className="text-2xl font-bold text-primary capitalize">{user.role}</p>
+                                    <p className="text-sm text-gray-600 mb-1">Expertise</p>
+                                    <p className="text-2xl font-bold text-primary capitalize">{user.expertise}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
                                     <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -197,7 +197,7 @@ export default function DashboardPage() {
                                                 )}
                                             </div>
                                             <h3 className="font-semibold text-gray-900 mb-1">{match.fullName}</h3>
-                                            <p className="text-sm text-gray-600 capitalize mb-3">{match.role}</p>
+                                            <p className="text-sm text-gray-600 capitalize mb-3">{match.expertise}</p>
                                             <Link href="/matches">
                                                 <Button size="sm">View Profile</Button>
                                             </Link>

@@ -60,10 +60,8 @@ export function truncate(text: string, length: number): string {
 }
 
 /**
- * Calculate match percentage from score
+ * Calculate match percentage from score (score is already out of 100)
  */
 export function calculateMatchPercentage(score: number): number {
-    // Max realistic score: 5 shared skills (50) + industry match (20) = 70
-    const maxScore = 100;
-    return Math.min(Math.round((score / maxScore) * 100), 100);
+    return Math.min(Math.round(score), 100);
 }

@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { UserProvider } from '@/context/UserContext';
 
 export default async function ProtectedLayout({
@@ -23,7 +22,6 @@ export default async function ProtectedLayout({
             <main className="flex-1">
                 <UserProvider>{children}</UserProvider>
             </main>
-            <Footer />
         </div>
     );
 }

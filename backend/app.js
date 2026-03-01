@@ -91,8 +91,18 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-    console.error('Error:', err);
-    res.status(err.status || 500).json({
+    console.error(`[ERROR] ${req.method} ${req.url}:`, err.message || err);
+    if (err.stack) console.error(err.stack);
+
+    // Clerk auth errors (requireAuth rejection)
+    if (err.status === 401 || err.statusCode === 401 || err.message?.includes('Unauthenticated')) {
+        return res.status(401).json({
+            error: 'Unauthorized',
+            message: 'Authentication required. Please sign in again.',
+        });
+    }
+
+    res.status(err.status || err.statusCode || 500).json({
         error: err.message || 'Internal server error',
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });

@@ -25,7 +25,7 @@ export function useCurrentUser() {
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {
-    const { getToken } = useAuth();
+    const { getToken, isLoaded, isSignedIn } = useAuth();
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
@@ -62,9 +62,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
     }, [getToken, router]);
 
+    // Wait for Clerk to fully initialize before fetching user
     useEffect(() => {
+        if (!isLoaded) return;
+        if (!isSignedIn) return;
         fetchUser();
-    }, [fetchUser]);
+    }, [isLoaded, isSignedIn, fetchUser]);
 
     return (
         <UserContext.Provider value={{ user, loading, error, refetch: fetchUser }}>

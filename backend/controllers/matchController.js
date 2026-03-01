@@ -5,7 +5,6 @@ import { calculateMatchScore } from '../functionality/matchAlgorithm.js';
 export const getRecommendations = async (req, res) => {
     try {
         const clerkId = req.auth.userId;
-        const { filter } = req.query;
 
         const currentUser = await User.findOne({ clerkId });
 
@@ -16,16 +15,8 @@ export const getRecommendations = async (req, res) => {
             });
         }
 
-        let targetRole;
-
-        if (filter === 'same') {
-            targetRole = currentUser.role;
-        } else {
-            targetRole = currentUser.role === 'founder' ? 'investor' : 'founder';
-        }
-
+        // Get all other users as potential matches
         const candidates = await User.find({
-            role: targetRole,
             clerkId: { $ne: clerkId },
         });
 
@@ -40,7 +31,6 @@ export const getRecommendations = async (req, res) => {
         res.json({
             matches: sortedMatches,
             total: sortedMatches.length,
-            filter: filter || 'opposite',
         });
     } catch (error) {
         console.error('Error fetching recommendations:', error);

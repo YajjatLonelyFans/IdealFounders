@@ -3,14 +3,26 @@ export interface User {
     _id: string;
     clerkId: string;
     email: string;
-    role: 'founder' | 'investor';
     fullName: string;
+    birthdate: string;
+    gender: 'male' | 'female';
+    location: {
+        state: string;
+        city: string;
+        locality: string;
+    };
+    education: {
+        degree: string;
+        yearOfPassing: string;
+    };
+    expertise: 'technical' | 'non-technical';
+    expertiseLookingFor: 'technical' | 'non-technical';
     bio: string;
     skills: string[];
-    lookingFor: {
-        role: string;
-        industry: string;
-    };
+    skillsLookingFor: string[];
+    startingFrom: 'own_idea' | 'join_idea' | 'either';
+    hasCofounder: boolean;
+    suitability: 'cofounder_with_idea' | 'cofounder_looking' | 'either';
     avatar: {
         url: string;
         publicId: string;
@@ -26,30 +38,29 @@ export interface Match extends User {
 
 // Message type for chat
 export interface Message {
-    _id: string; // MongoDB ID
+    _id: string;
     conversationId: string;
     senderId: string;
     senderName: string;
-    content: string; // New field
-    message?: string; // Old field (optional for compatibility)
-    timestamp?: string; // Old field
+    content: string;
+    message?: string;
+    timestamp?: string;
     createdAt: string;
     updatedAt: string;
-    isMe?: boolean; // Frontend only helper
+    isMe?: boolean;
 }
 
 // API Error type
 export interface ApiError {
     error: string;
     message: string;
-    details?: string;
+    details?: string | string[];
 }
 
 // API Response types
 export interface MatchesResponse {
     matches: Match[];
     total: number;
-    filter: 'opposite' | 'same';
 }
 
 export interface UserResponse {
@@ -60,13 +71,25 @@ export interface UserResponse {
 // Form types
 export interface OnboardingFormData {
     fullName: string;
-    bio: string;
-    role: 'founder' | 'investor';
-    skills: string[];
-    lookingFor: {
-        role: string;
-        industry: string;
+    birthdate: string;
+    gender: 'male' | 'female';
+    location: {
+        state: string;
+        city: string;
+        locality: string;
     };
+    education: {
+        degree: string;
+        yearOfPassing: string;
+    };
+    expertise: 'technical' | 'non-technical';
+    expertiseLookingFor: 'technical' | 'non-technical';
+    bio: string;
+    skills: string[];
+    skillsLookingFor: string[];
+    startingFrom: 'own_idea' | 'join_idea' | 'either';
+    hasCofounder: boolean;
+    suitability: 'cofounder_with_idea' | 'cofounder_looking' | 'either';
     avatar?: File;
 }
 
@@ -79,6 +102,5 @@ export interface Conversation {
     participant: {
         fullName: string;
         avatar: { url: string };
-        role: string;
     };
 }

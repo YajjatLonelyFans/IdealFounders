@@ -12,14 +12,52 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
-        role: {
-            type: String,
-            enum: ['founder', 'investor'],
-            required: true,
-        },
         fullName: {
             type: String,
-            default: '',
+            default: 'N/A',
+        },
+        birthdate: {
+            type: Date,
+            default: null,
+        },
+        gender: {
+            type: String,
+            enum: ['male', 'female'],
+            default: 'male',
+        },
+        location: {
+            state: {
+                type: String,
+                default: 'N/A',
+            },
+            city: {
+                type: String,
+                default: 'N/A',
+            },
+            locality: {
+                type: String,
+                default: 'N/A',
+            },
+        },
+        education: {
+            degree: {
+                type: String,
+                default: 'N/A',
+            },
+            yearOfPassing: {
+                type: String,
+                default: 'N/A',
+            },
+        },
+        expertise: {
+            type: String,
+            enum: ['technical', 'non-technical'],
+            default: 'technical',
+        },
+        expertiseLookingFor: {
+            type: String,
+            enum: ['technical', 'non-technical'],
+            default: 'technical',
         },
         bio: {
             type: String,
@@ -29,15 +67,23 @@ const userSchema = new mongoose.Schema(
             type: [String],
             default: [],
         },
-        lookingFor: {
-            role: {
-                type: String,
-                default: '',
-            },
-            industry: {
-                type: String,
-                default: '',
-            },
+        skillsLookingFor: {
+            type: [String],
+            default: [],
+        },
+        startingFrom: {
+            type: String,
+            enum: ['own_idea', 'join_idea', 'either'],
+            default: 'either',
+        },
+        hasCofounder: {
+            type: Boolean,
+            default: false,
+        },
+        suitability: {
+            type: String,
+            enum: ['cofounder_with_idea', 'cofounder_looking', 'either'],
+            default: 'either',
         },
         avatar: {
             url: {
