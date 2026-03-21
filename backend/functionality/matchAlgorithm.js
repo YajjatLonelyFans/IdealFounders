@@ -1,8 +1,12 @@
 /**
  * Matchmaking Algorithm — Weighted Scoring (out of 100)
  *
- * 40% — Locality (state → city → locality)
- * 20% — Education (degree + year of passing)
+ * Status-aware matching:
+ * - Both graduated:  locality = 40, education = 0
+ * - Both pursuing:   education = 40 (college 20 + degree 10 + year 10), locality = 0
+ * - Cross-status:    locality = 0, education = 0
+ *
+ * Universal scores (always applied):
  *  5% — Expertise cross-match
  * 20% — Skills cross-match (5% per matched skill, capped at 20)
  * 10% — Suitability / StartingFrom compatibility
@@ -11,8 +15,13 @@
 
 const normalizeStr = (s) => (s || '').trim().toLowerCase();
 
-// 40 points max
+// 40 points max — only if both users are graduated
 const calcLocalityScore = (userA, userB) => {
+    // Only score locality when both users are graduates
+    if (userA.graduateStatus !== 'graduated' || userB.graduateStatus !== 'graduated') {
+        return 0;
+    }
+
     const a = userA.location || {};
     const b = userB.location || {};
 
@@ -31,23 +40,39 @@ const calcLocalityScore = (userA, userB) => {
     return 0;
 };
 
-// 20 points max
+// 40 points max — only if both users are pursuing
 const calcEducationScore = (userA, userB) => {
-    const a = userA.education || {};
-    const b = userB.education || {};
-
-    // Skip scoring if either user has N/A education
-    if (normalizeStr(a.degree) === 'n/a' || normalizeStr(b.degree) === 'n/a') {
+    // Only score education when both users are pursuing
+    if (userA.graduateStatus !== 'pursuing' || userB.graduateStatus !== 'pursuing') {
         return 0;
     }
 
+    const a = userA.education || {};
+    const b = userB.education || {};
+
     let score = 0;
-    if (normalizeStr(a.degree) === normalizeStr(b.degree)) {
+
+    // College name match (20 pts)
+    const collegeA = normalizeStr(a.collegeName);
+    const collegeB = normalizeStr(b.collegeName);
+    if (collegeA && collegeB && collegeA !== 'n/a' && collegeB !== 'n/a' && collegeA === collegeB) {
+        score += 20;
+    }
+
+    // Degree match (10 pts)
+    const degreeA = normalizeStr(a.degree);
+    const degreeB = normalizeStr(b.degree);
+    if (degreeA && degreeB && degreeA !== 'n/a' && degreeB !== 'n/a' && degreeA === degreeB) {
         score += 10;
     }
-    if (normalizeStr(a.yearOfPassing) === normalizeStr(b.yearOfPassing)) {
+
+    // Year of passing match (10 pts)
+    const yearA = normalizeStr(a.yearOfPassing);
+    const yearB = normalizeStr(b.yearOfPassing);
+    if (yearA && yearB && yearA !== 'n/a' && yearB !== 'n/a' && yearA === yearB) {
         score += 10;
     }
+
     return score;
 };
 
@@ -90,11 +115,6 @@ const calcSkillsScore = (userA, userB) => {
 // 10 points max
 const calcSuitabilityScore = (userA, userB) => {
     let score = 0;
-
-    // StartingFrom ↔ Suitability compatibility
-    // own_idea pairs well with cofounder_looking
-    // join_idea pairs well with cofounder_with_idea
-    // either pairs with anything
 
     const compatCheck = (startingFrom, suitability) => {
         if (startingFrom === 'either' || suitability === 'either') return true;

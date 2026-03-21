@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
             enum: ['male', 'female'],
             default: 'male',
         },
+        graduateStatus: {
+            type: String,
+            enum: ['graduated', 'pursuing'],
+            default: 'graduated',
+        },
         location: {
             state: {
                 type: String,
@@ -40,6 +45,10 @@ const userSchema = new mongoose.Schema(
             },
         },
         education: {
+            collegeName: {
+                type: String,
+                default: 'N/A',
+            },
             degree: {
                 type: String,
                 default: 'N/A',

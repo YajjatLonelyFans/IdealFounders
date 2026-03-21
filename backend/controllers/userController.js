@@ -77,7 +77,7 @@ export const onboardUser = async (req, res) => {
     try {
         const clerkId = req.auth.userId;
         const {
-            fullName, birthdate, gender,
+            fullName, birthdate, gender, graduateStatus,
             location, education,
             expertise, expertiseLookingFor,
             bio, skills, skillsLookingFor,
@@ -109,20 +109,26 @@ export const onboardUser = async (req, res) => {
         const genderErr = validateEnum(gender, ['male', 'female'], 'Gender');
         if (genderErr) errors.push(genderErr);
 
-        // location
+        // graduateStatus
+        const gradErr = validateEnum(graduateStatus, ['graduated', 'pursuing'], 'Graduate status');
+        if (gradErr) errors.push(gradErr);
+
+        // location — only required for graduates
         let parsedLocation = location;
         if (typeof location === 'string') {
             try { parsedLocation = JSON.parse(location); } catch { parsedLocation = {}; }
         }
-        if (!parsedLocation || typeof parsedLocation !== 'object') {
-            errors.push('Location is required');
-        } else {
-            const stateErr = validateString(parsedLocation.state, 2, 100, 'State');
-            if (stateErr) errors.push(stateErr);
-            const cityErr = validateString(parsedLocation.city, 2, 100, 'City');
-            if (cityErr) errors.push(cityErr);
-            const localityErr = validateString(parsedLocation.locality, 2, 100, 'Locality');
-            if (localityErr) errors.push(localityErr);
+        if (graduateStatus === 'graduated') {
+            if (!parsedLocation || typeof parsedLocation !== 'object') {
+                errors.push('Location is required for graduates');
+            } else {
+                const stateErr = validateString(parsedLocation.state, 2, 100, 'State');
+                if (stateErr) errors.push(stateErr);
+                const cityErr = validateString(parsedLocation.city, 2, 100, 'City');
+                if (cityErr) errors.push(cityErr);
+                const localityErr = validateString(parsedLocation.locality, 2, 100, 'Locality');
+                if (localityErr) errors.push(localityErr);
+            }
         }
 
         // expertise
@@ -179,14 +185,30 @@ export const onboardUser = async (req, res) => {
             });
         }
 
-        // --- Process education (optional — default N/A) ---
+        // --- Process education (optional for graduates, shown for pursuing) ---
         let parsedEducation = education;
         if (typeof education === 'string') {
             try { parsedEducation = JSON.parse(education); } catch { parsedEducation = {}; }
         }
-        const finalEducation = {
+        const finalEducation = graduateStatus === 'pursuing' ? {
+            collegeName: sanitizeString(parsedEducation?.collegeName) || 'N/A',
             degree: sanitizeString(parsedEducation?.degree) || 'N/A',
             yearOfPassing: sanitizeString(parsedEducation?.yearOfPassing) || 'N/A',
+        } : {
+            collegeName: 'N/A',
+            degree: 'N/A',
+            yearOfPassing: 'N/A',
+        };
+
+        // --- Process location (set N/A for pursuing students) ---
+        const finalLocation = graduateStatus === 'graduated' ? {
+            state: sanitizeString(parsedLocation?.state) || 'N/A',
+            city: sanitizeString(parsedLocation?.city) || 'N/A',
+            locality: sanitizeString(parsedLocation?.locality) || 'N/A',
+        } : {
+            state: 'N/A',
+            city: 'N/A',
+            locality: 'N/A',
         };
 
         // --- Fetch email from Clerk ---
@@ -219,11 +241,8 @@ export const onboardUser = async (req, res) => {
             fullName: sanitizeString(fullName),
             birthdate: new Date(birthdate),
             gender,
-            location: {
-                state: sanitizeString(parsedLocation.state),
-                city: sanitizeString(parsedLocation.city),
-                locality: sanitizeString(parsedLocation.locality),
-            },
+            graduateStatus,
+            location: finalLocation,
             education: finalEducation,
             expertise,
             expertiseLookingFor,

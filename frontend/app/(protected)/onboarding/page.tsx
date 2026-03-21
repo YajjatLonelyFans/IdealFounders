@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { CollegeAutocomplete } from '@/components/ui/CollegeAutocomplete';
 import { updateProfile } from '@/lib/api';
 import { useCurrentUser } from '@/context/UserContext';
 import { fadeInUp, fadeIn, scaleIn } from '@/lib/animations';
+import { COLLEGES } from '@/data/colleges';
 
 const STEP_TITLES = ['Personal Information', 'Preferences & Skills'];
 
@@ -31,8 +33,9 @@ export default function OnboardingPage() {
         fullName: '',
         birthdate: '',
         gender: '' as '' | 'male' | 'female',
+        graduateStatus: '' as '' | 'graduated' | 'pursuing',
         location: { state: '', city: '', locality: '' },
-        education: { degree: '', yearOfPassing: '' },
+        education: { collegeName: '', degree: '', yearOfPassing: '' },
         expertise: '' as '' | 'technical' | 'non-technical',
         expertiseLookingFor: '' as '' | 'technical' | 'non-technical',
         bio: '',
@@ -84,10 +87,12 @@ export default function OnboardingPage() {
         if (!formData.fullName.trim()) { setError('Full name is required'); return false; }
         if (!formData.birthdate) { setError('Birthdate is required'); return false; }
         if (!formData.gender) { setError('Please select your gender'); return false; }
-        if (!formData.location.state.trim()) { setError('State is required'); return false; }
-        if (!formData.location.city.trim()) { setError('City is required'); return false; }
-        if (!formData.location.locality.trim()) { setError('Locality is required'); return false; }
-        // Education is optional
+        if (!formData.graduateStatus) { setError('Please select your graduation status'); return false; }
+        if (formData.graduateStatus === 'graduated') {
+            if (!formData.location.state.trim()) { setError('State is required'); return false; }
+            if (!formData.location.city.trim()) { setError('City is required'); return false; }
+            if (!formData.location.locality.trim()) { setError('Locality is required'); return false; }
+        }
         return true;
     };
 
@@ -129,10 +134,13 @@ export default function OnboardingPage() {
 
             const submitData = {
                 ...formData,
-                education: {
+                graduateStatus: formData.graduateStatus,
+                education: formData.graduateStatus === 'pursuing' ? {
+                    collegeName: formData.education.collegeName.trim() || 'N/A',
                     degree: formData.education.degree.trim() || 'N/A',
                     yearOfPassing: formData.education.yearOfPassing.trim() || 'N/A',
-                },
+                } : { collegeName: 'N/A', degree: 'N/A', yearOfPassing: 'N/A' },
+                location: formData.graduateStatus === 'graduated' ? formData.location : { state: 'N/A', city: 'N/A', locality: 'N/A' },
                 hasCofounder: formData.hasCofounder!,
             };
 
@@ -279,56 +287,111 @@ export default function OnboardingPage() {
                                     </div>
                                 </div>
 
-                                {/* Location */}
+                                {/* Graduate Status Toggle */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Location <span className="text-error">*</span>
+                                        Are you currently pursuing a degree? <span className="text-error">*</span>
                                     </label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                        <Input
-                                            type="text"
-                                            required
-                                            value={formData.location.state}
-                                            onChange={(e) => setFormData({ ...formData, location: { ...formData.location, state: e.target.value } })}
-                                            placeholder="State"
-                                        />
-                                        <Input
-                                            type="text"
-                                            required
-                                            value={formData.location.city}
-                                            onChange={(e) => setFormData({ ...formData, location: { ...formData.location, city: e.target.value } })}
-                                            placeholder="City"
-                                        />
-                                        <Input
-                                            type="text"
-                                            required
-                                            value={formData.location.locality}
-                                            onChange={(e) => setFormData({ ...formData, location: { ...formData.location, locality: e.target.value } })}
-                                            placeholder="Locality"
-                                        />
+                                    <div className="flex gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, graduateStatus: 'pursuing' })}
+                                            className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all ${formData.graduateStatus === 'pursuing'
+                                                ? 'border-primary bg-primary-50 text-primary'
+                                                : 'border-border hover:border-primary'
+                                                }`}
+                                        >
+                                            Yes, I&apos;m a student
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, graduateStatus: 'graduated' })}
+                                            className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all ${formData.graduateStatus === 'graduated'
+                                                ? 'border-primary bg-primary-50 text-primary'
+                                                : 'border-border hover:border-primary'
+                                                }`}
+                                        >
+                                            No, I&apos;ve graduated
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Education (Optional) */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Education <span className="text-gray-400 text-xs font-normal">(Optional)</span>
-                                    </label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <Input
-                                            type="text"
-                                            value={formData.education.degree}
-                                            onChange={(e) => setFormData({ ...formData, education: { ...formData.education, degree: e.target.value } })}
-                                            placeholder="Degree (e.g., B.Tech, MBA)"
-                                        />
-                                        <Input
-                                            type="text"
-                                            value={formData.education.yearOfPassing}
-                                            onChange={(e) => setFormData({ ...formData, education: { ...formData.education, yearOfPassing: e.target.value } })}
-                                            placeholder="Year of Passing (e.g., 2024)"
-                                        />
-                                    </div>
-                                </div>
+                                {/* Location — only for graduates */}
+                                <AnimatePresence mode="wait">
+                                {formData.graduateStatus === 'graduated' && (
+                                    <motion.div
+                                        key="location-fields"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    >
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Location <span className="text-error">*</span>
+                                        </label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <Input
+                                                type="text"
+                                                required
+                                                value={formData.location.state}
+                                                onChange={(e) => setFormData({ ...formData, location: { ...formData.location, state: e.target.value } })}
+                                                placeholder="State"
+                                            />
+                                            <Input
+                                                type="text"
+                                                required
+                                                value={formData.location.city}
+                                                onChange={(e) => setFormData({ ...formData, location: { ...formData.location, city: e.target.value } })}
+                                                placeholder="City"
+                                            />
+                                            <Input
+                                                type="text"
+                                                required
+                                                value={formData.location.locality}
+                                                onChange={(e) => setFormData({ ...formData, location: { ...formData.location, locality: e.target.value } })}
+                                                placeholder="Locality"
+                                            />
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* Education — only for pursuing students */}
+                                {formData.graduateStatus === 'pursuing' && (
+                                    <motion.div
+                                        key="education-fields"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    >
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Education
+                                        </label>
+                                        <div className="space-y-3">
+                                            <CollegeAutocomplete
+                                                value={formData.education.collegeName}
+                                                onChange={(val) => setFormData({ ...formData, education: { ...formData.education, collegeName: val } })}
+                                                colleges={COLLEGES}
+                                                placeholder="Search your college..."
+                                            />
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <Input
+                                                    type="text"
+                                                    value={formData.education.degree}
+                                                    onChange={(e) => setFormData({ ...formData, education: { ...formData.education, degree: e.target.value } })}
+                                                    placeholder="Degree (e.g., B.Tech, MBA)"
+                                                />
+                                                <Input
+                                                    type="text"
+                                                    value={formData.education.yearOfPassing}
+                                                    onChange={(e) => setFormData({ ...formData, education: { ...formData.education, yearOfPassing: e.target.value } })}
+                                                    placeholder="Year of Passing (e.g., 2026)"
+                                                />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                                </AnimatePresence>
                             </motion.div>
                         )}
 
@@ -404,7 +467,7 @@ export default function OnboardingPage() {
                                 {/* Bio */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                        Bio <span className="text-error">*</span>
+                                        Explain your business idea or tell something about your self <span className="text-error">*</span>
                                     </label>
                                     <textarea
                                         required

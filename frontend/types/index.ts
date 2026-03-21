@@ -6,12 +6,14 @@ export interface User {
     fullName: string;
     birthdate: string;
     gender: 'male' | 'female';
+    graduateStatus: 'graduated' | 'pursuing';
     location: {
         state: string;
         city: string;
         locality: string;
     };
     education: {
+        collegeName: string;
         degree: string;
         yearOfPassing: string;
     };
@@ -73,12 +75,14 @@ export interface OnboardingFormData {
     fullName: string;
     birthdate: string;
     gender: 'male' | 'female';
+    graduateStatus: 'graduated' | 'pursuing';
     location: {
         state: string;
         city: string;
         locality: string;
     };
     education: {
+        collegeName: string;
         degree: string;
         yearOfPassing: string;
     };

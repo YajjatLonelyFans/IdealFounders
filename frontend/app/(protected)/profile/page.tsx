@@ -97,13 +97,11 @@ export default function ProfilePage() {
                                 <div className="flex flex-wrap gap-2 mb-3">
                                     <Badge variant="primary" className="capitalize">{user.gender}</Badge>
                                     <Badge variant="secondary" className="capitalize">{user.expertise}</Badge>
+                                    <Badge variant={user.graduateStatus === 'pursuing' ? 'primary' : 'secondary'}>
+                                        {user.graduateStatus === 'pursuing' ? 'Student' : 'Graduate'}
+                                    </Badge>
                                 </div>
                                 <p className="text-gray-600">{user.email}</p>
-                                {user.location && (
-                                    <p className="text-gray-500 text-sm mt-1">
-                                        {user.location.locality}, {user.location.city}, {user.location.state}
-                                    </p>
-                                )}
                             </div>
                         </motion.div>
 
@@ -113,20 +111,47 @@ export default function ProfilePage() {
                             <p className="text-gray-700">{user.bio}</p>
                         </motion.div>
 
-                        {/* Education */}
-                        <motion.div className="mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Education</h3>
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm text-gray-600 mb-1">Degree</p>
-                                    <p className="text-gray-900 font-medium">{user.education?.degree || 'N/A'}</p>
+                        {/* Location — only for graduates */}
+                        {user.graduateStatus === 'graduated' && user.location && (
+                            <motion.div className="mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Location</h3>
+                                <div className="grid md:grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">State</p>
+                                        <p className="text-gray-900 font-medium">{user.location.state || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">City</p>
+                                        <p className="text-gray-900 font-medium">{user.location.city || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">Locality</p>
+                                        <p className="text-gray-900 font-medium">{user.location.locality || 'N/A'}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-600 mb-1">Year of Passing</p>
-                                    <p className="text-gray-900 font-medium">{user.education?.yearOfPassing || 'N/A'}</p>
+                            </motion.div>
+                        )}
+
+                        {/* Education — only for pursuing students */}
+                        {user.graduateStatus === 'pursuing' && (
+                            <motion.div className="mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Education</h3>
+                                <div className="grid md:grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">College</p>
+                                        <p className="text-gray-900 font-medium">{user.education?.collegeName || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">Degree</p>
+                                        <p className="text-gray-900 font-medium">{user.education?.degree || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">Year of Passing</p>
+                                        <p className="text-gray-900 font-medium">{user.education?.yearOfPassing || 'N/A'}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </motion.div>
+                            </motion.div>
+                        )}
 
                         {/* Skills */}
                         <motion.div className="mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
