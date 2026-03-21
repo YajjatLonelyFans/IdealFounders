@@ -327,7 +327,7 @@ export default function OnboardingPage() {
                                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                                     >
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Location <span className="text-error">*</span>
+                                            Location <span className="text-error"></span>
                                         </label>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                             <Input
