@@ -65,8 +65,9 @@ export async function updateProfile(
         fullName?: string;
         birthdate?: string;
         gender?: string;
+        graduateStatus?: string;
         location?: { state: string; city: string; locality: string };
-        education?: { degree: string; yearOfPassing: string };
+        education?: { collegeName?: string; degree: string; yearOfPassing: string };
         expertise?: string;
         expertiseLookingFor?: string;
         bio?: string;
@@ -84,6 +85,7 @@ export async function updateProfile(
     if (data.fullName) formData.append('fullName', data.fullName);
     if (data.birthdate) formData.append('birthdate', data.birthdate);
     if (data.gender) formData.append('gender', data.gender);
+    if (data.graduateStatus) formData.append('graduateStatus', data.graduateStatus);
     if (data.location) formData.append('location', JSON.stringify(data.location));
     if (data.education) formData.append('education', JSON.stringify(data.education));
     if (data.expertise) formData.append('expertise', data.expertise);
