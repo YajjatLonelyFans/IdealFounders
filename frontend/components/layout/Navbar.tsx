@@ -4,15 +4,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { UserButton, useUser, useAuth } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { getUnreadCount } from '@/lib/api';
+
+const NAV_LINKS = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/matches', label: 'Matches' },
+    { href: '/chat', label: 'Messages' },
+    { href: '/profile', label: 'Profile' },
+];
 
 export function Navbar() {
     const { isSignedIn } = useUser();
     const { getToken } = useAuth();
+    const pathname = usePathname();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // Fetch unread count on mount and periodically
     useEffect(() => {
         if (!isSignedIn) return;
 
@@ -29,130 +37,105 @@ export function Navbar() {
         };
 
         fetchUnreadCount();
-
-        // Poll every 10 seconds for updates
         const interval = setInterval(fetchUnreadCount, 10000);
-
         return () => clearInterval(interval);
     }, [isSignedIn, getToken]);
 
-    return (
-        <nav className="bg-white border-b border-border sticky top-0 z-50 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-16">
-                    {/* Logo */}
-                    <Link href={isSignedIn ? '/dashboard' : '/'} className="flex items-center gap-3">
-                        <Image src="/logo.jpeg" alt="IdealFounders" width={40} height={40} className="rounded-lg" />
-                        <span className="text-xl font-bold text-primary">IdealFounders</span>
-                    </Link>
+    const isActive = (href: string) => {
+        if (href === '/dashboard') return pathname === '/dashboard';
+        return pathname.startsWith(href);
+    };
 
-                    {/* Desktop Navigation */}
-                    {isSignedIn && (
-                        <div className="hidden md:flex items-center gap-6">
+    return (
+        <nav className="glass-nav fixed top-0 left-0 right-0 z-50">
+            <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                {/* Logo */}
+                <Link href={isSignedIn ? '/dashboard' : '/'} className="flex items-center gap-3 group">
+                    <Image
+                        src="/idealfounders.jpeg"
+                        alt="IdealFounders"
+                        width={36}
+                        height={36}
+                        className="rounded-xl shadow-md shadow-blue-500/20 group-hover:shadow-blue-500/30 transition-shadow"
+                    />
+                    <span className="text-lg font-semibold text-slate-800 tracking-tight">
+                        Ideal<span className="text-gradient">Founders</span>
+                    </span>
+                </Link>
+
+                {/* Desktop Navigation */}
+                {isSignedIn && (
+                    <div className="hidden md:flex items-center gap-1">
+                        {NAV_LINKS.map(({ href, label }) => (
                             <Link
-                                href="/dashboard"
-                                className="text-gray-700 hover:text-primary font-medium transition-colors"
+                                key={href}
+                                href={href}
+                                className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 relative ${
+                                    isActive(href)
+                                        ? 'text-blue-600 font-medium bg-blue-50'
+                                        : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                }`}
                             >
-                                Dashboard
-                            </Link>
-                            <Link
-                                href="/matches"
-                                className="text-gray-700 hover:text-primary font-medium transition-colors"
-                            >
-                                Matches
-                            </Link>
-                            <Link
-                                href="/chat"
-                                className="text-gray-700 hover:text-primary font-medium transition-colors relative"
-                            >
-                                Messages
-                                {unreadCount > 0 && (
-                                    <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                {label}
+                                {label === 'Messages' && unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                                         {unreadCount}
                                     </span>
                                 )}
                             </Link>
-                            <Link
-                                href="/profile"
-                                className="text-gray-700 hover:text-primary font-medium transition-colors"
-                            >
-                                Profile
-                            </Link>
+                        ))}
+                        <div className="ml-3">
                             <UserButton afterSignOutUrl="/" />
-                        </div>
-                    )}
-
-                    {/* Mobile menu button */}
-                    {isSignedIn && (
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-                        >
-                            <svg
-                                className="h-6 w-6 text-gray-700"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                {mobileMenuOpen ? (
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                ) : (
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                )}
-                            </svg>
-                        </button>
-                    )}
-                </div>
-
-                {/* Mobile Navigation */}
-                {isSignedIn && mobileMenuOpen && (
-                    <div className="md:hidden py-4 border-t border-border">
-                        <div className="flex flex-col gap-3">
-                            <Link
-                                href="/dashboard"
-                                className="text-gray-700 hover:text-primary font-medium py-2"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                Dashboard
-                            </Link>
-                            <Link
-                                href="/matches"
-                                className="text-gray-700 hover:text-primary font-medium py-2"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                Matches
-                            </Link>
-                            <Link
-                                href="/chat"
-                                className="text-gray-700 hover:text-primary font-medium py-2"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                Messages
-                            </Link>
-                            <Link
-                                href="/profile"
-                                className="text-gray-700 hover:text-primary font-medium py-2"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                Profile
-                            </Link>
-                            <div className="pt-2">
-                                <UserButton afterSignOutUrl="/" />
-                            </div>
                         </div>
                     </div>
                 )}
+
+                {/* Mobile menu button */}
+                {isSignedIn && (
+                    <button
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="md:hidden text-slate-500 hover:text-blue-600 transition-colors"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            {mobileMenuOpen ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            )}
+                        </svg>
+                    </button>
+                )}
             </div>
+
+            {/* Mobile Navigation */}
+            {isSignedIn && mobileMenuOpen && (
+                <div className="md:hidden px-6 py-4 border-t border-slate-100/50">
+                    <div className="flex flex-col gap-1">
+                        {NAV_LINKS.map(({ href, label }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                className={`px-4 py-2.5 text-sm rounded-lg transition-all duration-200 ${
+                                    isActive(href)
+                                        ? 'text-blue-600 font-medium bg-blue-50'
+                                        : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                }`}
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                {label}
+                                {label === 'Messages' && unreadCount > 0 && (
+                                    <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </Link>
+                        ))}
+                        <div className="pt-2 px-4">
+                            <UserButton afterSignOutUrl="/" />
+                        </div>
+                    </div>
+                </div>
+            )}
         </nav>
     );
 }

@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'IdealFounders - Co-founder & Investor Matchmaking',
-  description: 'Connect with co-founders and investors through skill-based algorithmic matching',
+  title: 'IdealFounders — Elevate Your Startup Journey',
+  description: 'Find your perfect co-founder or investor through advanced algorithmic matching. No swiping, just meaningful connections built for success.',
 };
 
 export default function RootLayout({
