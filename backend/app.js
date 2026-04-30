@@ -12,6 +12,8 @@ import matchRoutes from './routes/matchRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
+import User from './models/User.js';
+import { sendDMNotification } from './lib/email.js';
 
 // Initialize Express app
 const app = express();
@@ -149,20 +151,29 @@ io.on('connection', (socket) => {
                         participants,
                         lastMessage: message,
                         lastMessageAt: new Date(),
+                        messageCount: 1,
                     });
                 }
             } else {
-                // Update existing conversation
-                conversation.lastMessage = message;
-                conversation.lastMessageAt = new Date();
+                // Update existing conversation + atomically increment messageCount
+                conversation = await Conversation.findByIdAndUpdate(
+                    conversation._id,
+                    {
+                        $set: {
+                            lastMessage: message,
+                            lastMessageAt: new Date(),
+                        },
+                        $inc: { messageCount: 1 },
+                    },
+                    { new: true }
+                );
 
                 // Mark as unread for the recipient (not the sender)
                 const recipientId = conversation.participants.find(id => id !== senderId);
                 if (recipientId) {
                     conversation.hasUnreadMessages.set(recipientId, true);
+                    await conversation.save();
                 }
-
-                await conversation.save();
             }
 
             // 2. Create message
@@ -173,6 +184,29 @@ io.on('connection', (socket) => {
                     senderName,
                     content: message,
                 });
+            }
+
+            // 3. Send email notification during icebreaking phase (first 2 messages only)
+            if (conversation && conversation.messageCount <= 2) {
+                const recipientId = conversation.participants.find(id => id !== senderId);
+
+                if (recipientId && recipientId !== senderId) {
+                    const [receiver, sender] = await Promise.all([
+                        User.findOne({ clerkId: recipientId }).select('email fullName'),
+                        User.findOne({ clerkId: senderId }).select('fullName avatar'),
+                    ]);
+
+                    if (receiver?.email) {
+                        sendDMNotification({
+                            toEmail: receiver.email,
+                            toName: receiver.fullName || 'there',
+                            fromName: sender?.fullName || senderName || 'Someone',
+                            fromAvatar: sender?.avatar?.url || '',
+                            roomId,
+                        });
+                        // Fire-and-forget — don't await so we don't block Socket.io
+                    }
+                }
             }
         } catch (error) {
             console.error('Error saving message to DB:', error);

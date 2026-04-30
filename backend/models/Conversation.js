@@ -21,6 +21,10 @@ const conversationSchema = new mongoose.Schema(
             required: true,
             unique: true, // "user1--user2"
         },
+        messageCount: {
+            type: Number,
+            default: 0, // Tracks messages for icebreaking email notifications (emails sent only for first 2)
+        },
         hasUnreadMessages: {
             type: Map,
             of: Boolean,
